@@ -47,6 +47,21 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        risk: {
+          low: "hsl(var(--risk-low))",
+          "low-bg": "hsl(var(--risk-low-bg))",
+          medium: "hsl(var(--risk-medium))",
+          "medium-bg": "hsl(var(--risk-medium-bg))",
+          high: "hsl(var(--risk-high))",
+          "high-bg": "hsl(var(--risk-high-bg))",
+        },
+        score: {
+          excellent: "hsl(var(--score-excellent))",
+          good: "hsl(var(--score-good))",
+          fair: "hsl(var(--score-fair))",
+          poor: "hsl(var(--score-poor))",
+          bad: "hsl(var(--score-bad))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
