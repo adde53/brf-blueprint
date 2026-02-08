@@ -1,106 +1,87 @@
 import { useState } from "react";
-import { Building2, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Building2 } from "lucide-react";
 import { ReportUploader } from "@/components/ReportUploader";
-import { HeroSummary } from "@/components/HeroSummary";
-import { ScoreGauge } from "@/components/ScoreGauge";
-import { TechnicalCard } from "@/components/TechnicalCard";
-import { FinancialSection } from "@/components/FinancialSection";
-import { RecommendationsSection } from "@/components/RecommendationsSection";
-import { technicalCategories, brfScores } from "@/data/brfData";
+import { AnalysisResults } from "@/components/AnalysisResults";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { BrfAnalysisResult } from "@/types/brfAnalysis";
 
 const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<BrfAnalysisResult | null>(null);
   const { toast } = useToast();
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
+  };
 
   const handleAnalyze = async (files: File[]) => {
     setIsAnalyzing(true);
     
-    // Simulate analysis time (in real app, would send to edge function with AI)
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-    
-    toast({
-      title: "Analys klar!",
-      description: `${files.length} ${files.length === 1 ? "årsredovisning analyserad" : "årsredovisningar analyserade"}.`,
-    });
-    
-    setIsAnalyzing(false);
-    setShowResults(true);
+    try {
+      // Analyze the first PDF (can be extended for multiple)
+      const file = files[0];
+      const base64 = await fileToBase64(file);
+
+      toast({
+        title: "Analyserar...",
+        description: `Läser ${file.name} med AI. Detta kan ta en stund.`,
+      });
+
+      const { data, error } = await supabase.functions.invoke("analyze-brf", {
+        body: { pdfBase64: base64, fileName: file.name },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || "Analys misslyckades");
+      }
+
+      if (data.data) {
+        setAnalysisResult(data.data);
+        toast({
+          title: "Analys klar!",
+          description: `${data.data.association.name} har analyserats.`,
+        });
+      } else if (data.rawAnalysis) {
+        // Fallback if structured extraction failed
+        toast({
+          title: "Delvis analys",
+          description: "Kunde inte extrahera strukturerad data. Försök med en annan årsredovisning.",
+          variant: "destructive",
+        });
+      }
+
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast({
+        title: "Fel vid analys",
+        description: error instanceof Error ? error.message : "Något gick fel",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleBack = () => {
-    setShowResults(false);
+    setAnalysisResult(null);
   };
 
-  if (showResults) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
-          {/* Back button */}
-          <Button variant="ghost" onClick={handleBack} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Ny analys
-          </Button>
-
-          {/* Hero */}
-          <HeroSummary />
-
-          {/* Score Gauges */}
-          <section>
-            <h2 className="text-2xl text-foreground mb-4">Poängöversikt</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <ScoreGauge
-                score={brfScores.total}
-                label="Totalpoäng"
-                tooltip="Genomsnitt av alla delpoäng. Under 50 innebär att föreningen har flertalet riskområden som bör hanteras."
-                size="lg"
-              />
-              <ScoreGauge
-                score={brfScores.technical}
-                label="Tekniskt skick"
-                tooltip="Baserat på ålder och underhållsstatus för tak, stammar, fasad med mera."
-              />
-              <ScoreGauge
-                score={brfScores.financial}
-                label="Ekonomi"
-                tooltip="Beräknat utifrån lån, sparande, soliditet och kassaflöde."
-              />
-              <ScoreGauge
-                score={brfScores.feeRisk}
-                label="Avgiftsrisk"
-                tooltip="Risk att avgiften höjs kraftigt de kommande åren."
-              />
-            </div>
-          </section>
-
-          {/* Technical Condition */}
-          <section>
-            <h2 className="text-2xl text-foreground mb-2">Tekniskt skick</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Klicka på en kategori för att se detaljer.
-            </p>
-            <div className="space-y-2">
-              {technicalCategories.map((cat) => (
-                <TechnicalCard key={cat.id} category={cat} />
-              ))}
-            </div>
-          </section>
-
-          {/* Financial */}
-          <FinancialSection />
-
-          {/* Recommendations */}
-          <RecommendationsSection />
-
-          {/* Footer */}
-          <footer className="text-center text-xs text-muted-foreground pb-8 pt-4 border-t">
-            <p>BRF Analysen – baserat på uppladdade årsredovisningar.</p>
-          </footer>
-        </div>
-      </div>
-    );
+  if (analysisResult) {
+    return <AnalysisResults analysis={analysisResult} onBack={handleBack} />;
   }
 
   return (
@@ -113,7 +94,7 @@ const Index = () => {
           </div>
           <h1 className="text-3xl text-foreground mb-2">BRF Analysen</h1>
           <p className="text-muted-foreground">
-            Ladda upp årsredovisningar och få en komplett analys av föreningens ekonomi och tekniska skick.
+            Ladda upp årsredovisningar så analyserar AI:n ekonomi och tekniskt skick.
           </p>
         </div>
 
@@ -122,7 +103,7 @@ const Index = () => {
 
         {/* Info */}
         <p className="text-xs text-center text-muted-foreground mt-8">
-          Ladda upp en eller flera årsredovisningar (PDF) så analyserar vi ekonomi, lån, underhållsbehov och risker.
+          Ladda upp en eller flera årsredovisningar (PDF). AI:n extraherar lån, avgifter, underhållsplan och risker automatiskt.
         </p>
       </div>
     </div>
