@@ -21,6 +21,15 @@ export interface BrfFinancial {
   totalAssets?: number;
 }
 
+export type FeeItemType = "heating" | "water" | "electricity" | "internet_tv" | "parking" | "insurance" | "waste" | "maintenance_fund" | "other";
+
+export interface FeeIncludesItem {
+  item: FeeItemType;
+  name: string;
+  estimatedMonthlyCost?: number;
+  notes?: string;
+}
+
 export type ComponentStatus = "good" | "warning" | "critical";
 
 export interface BrfTechnicalItem {
@@ -39,12 +48,39 @@ export interface BrfAnalysisResult {
   association: BrfAssociation;
   financial: BrfFinancial;
   technical: BrfTechnicalItem[];
+  feeIncludes?: FeeIncludesItem[];
+  feeAnalysis?: string;
   overallAssessment: OverallAssessment;
   assessmentReason: string;
   risks?: string[];
   positives?: string[];
   summary: string;
 }
+
+// Fee item labels and icons
+export const feeItemLabels: Record<FeeItemType, string> = {
+  heating: "Värme",
+  water: "Vatten",
+  electricity: "El (gemensam)",
+  internet_tv: "Bredband/TV",
+  parking: "Parkering",
+  insurance: "Försäkring",
+  waste: "Sophantering",
+  maintenance_fund: "Underhållsfond",
+  other: "Övrigt"
+};
+
+export const feeItemIcons: Record<FeeItemType, string> = {
+  heating: "🔥",
+  water: "💧",
+  electricity: "💡",
+  internet_tv: "📺",
+  parking: "🚗",
+  insurance: "🛡️",
+  waste: "🗑️",
+  maintenance_fund: "🏦",
+  other: "📋"
+};
 
 // Status colors and labels
 export function getStatusColor(status: ComponentStatus): string {

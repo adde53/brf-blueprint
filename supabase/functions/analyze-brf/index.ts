@@ -26,6 +26,7 @@ Din uppgift är att:
 1. Extrahera all relevant data från årsredovisningen
 2. Bedöma varje byggnadsdels skick baserat på byggnadsår och underhållshistorik
 3. Ge en övergripande bedömning av föreningen
+4. Analysera vad som ingår i avgiften
 
 EKONOMISKA NYCKELTAL att leta efter:
 - Föreningens namn, adress, byggnadsår, antal lägenheter
@@ -33,6 +34,17 @@ EKONOMISKA NYCKELTAL att leta efter:
 - Årsavgifter → beräkna avgift per kvm/år  
 - Avsättning till underhållsfond → beräkna sparande per kvm/år
 - Soliditet, resultat, räntekostnader
+
+VAD INGÅR I AVGIFTEN (viktig för köpare!):
+Leta efter information om vad som ingår i månadsavgiften:
+- Värme (fjärrvärme, bergvärme, etc.) - typiskt värde ~300-600 kr/mån
+- Vatten (kallvatten, varmvatten) - typiskt värde ~200-400 kr/mån  
+- El i gemensamma utrymmen
+- Bredband/TV om det ingår - typiskt värde ~300-500 kr/mån
+- Parkering om det ingår - typiskt värde ~500-1500 kr/mån
+- Försäkring (bostadsrättstillägg) - typiskt värde ~100-300 kr/mån
+- Sophantering
+- Underhållsfond
 
 BYGGNADSTEKNISKA KOMPONENTER att bedöma (ange status grön/gul/röd baserat på ålder och underhåll):
 - Tak (livslängd ~40-50 år)
@@ -140,6 +152,28 @@ Var noggrann och extrahera bara information som faktiskt finns. Om något saknas
                       },
                       required: ["category", "name", "status"]
                     }
+                  },
+                  feeIncludes: {
+                    type: "array",
+                    description: "Vad som ingår i månadsavgiften",
+                    items: {
+                      type: "object",
+                      properties: {
+                        item: { 
+                          type: "string", 
+                          enum: ["heating", "water", "electricity", "internet_tv", "parking", "insurance", "waste", "maintenance_fund", "other"],
+                          description: "Typ av kostnad som ingår"
+                        },
+                        name: { type: "string", description: "Beskrivning på svenska" },
+                        estimatedMonthlyCost: { type: "number", description: "Uppskattad månadskostnad om det betalades separat (kr/mån)" },
+                        notes: { type: "string", description: "Detaljer, t.ex. fjärrvärme, bergvärme etc." }
+                      },
+                      required: ["item", "name"]
+                    }
+                  },
+                  feeAnalysis: {
+                    type: "string",
+                    description: "Analys av avgiften: Är den hög/låg givet vad som ingår? Finns risk för höjning?"
                   },
                   overallAssessment: {
                     type: "string",
