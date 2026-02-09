@@ -22,40 +22,37 @@ serve(async (req) => {
 
     const systemPrompt = `Du är en expert på att analysera svenska bostadsrättsföreningars årsredovisningar.
 
-Din uppgift är att extrahera följande information från årsredovisningen:
+Din uppgift är att:
+1. Extrahera all relevant data från årsredovisningen
+2. Bedöma varje byggnadsdels skick baserat på byggnadsår och underhållshistorik
+3. Ge en övergripande bedömning av föreningen
 
-EKONOMISKA NYCKELTAL:
-- Föreningens namn
-- Räkenskapsår
-- Totala skulder (lån)
-- Total bostadsarea (kvm)
-- Beräkna lån per kvm
-- Årsavgifter totalt
-- Beräkna avgift per kvm/år
-- Avsättning till underhållsfond per år
-- Beräkna sparande per kvm/år
-- Soliditet (eget kapital / totala tillgångar)
-- Resultat efter finansiella poster
-- Räntekostnader
+EKONOMISKA NYCKELTAL att leta efter:
+- Föreningens namn, adress, byggnadsår, antal lägenheter
+- Totala skulder (lån) och total bostadsarea → beräkna lån per kvm
+- Årsavgifter → beräkna avgift per kvm/år  
+- Avsättning till underhållsfond → beräkna sparande per kvm/år
+- Soliditet, resultat, räntekostnader
 
-TEKNISKT UNDERHÅLL (leta efter information om):
-- Tak (senaste renovering, planerad åtgärd)
-- Fasad (typ, senaste renovering)
-- Stammar/rör (senaste stambyte eller planerat)
-- Fönster (typ, ålder)
-- Hissar (senaste renovering)
-- Ventilation (typ, senaste åtgärd)
-- El-system
-- Värmesystem
-- Grund/dränering
-- Övriga planerade underhållsåtgärder
+BYGGNADSTEKNISKA KOMPONENTER att bedöma (ange status grön/gul/röd baserat på ålder och underhåll):
+- Tak (livslängd ~40-50 år)
+- Fasad (livslängd ~40-60 år) 
+- Stammar/rör (livslängd ~50-60 år)
+- Fönster (livslängd ~30-40 år)
+- El-system (livslängd ~40-50 år)
+- Ventilation (livslängd ~20-30 år)
+- Värmesystem (livslängd ~20-30 år)
+- Hissar om finns (livslängd ~25-35 år)
+- Grund/dränering (livslängd ~40-50 år)
+- Trapphus, portar, tvättstuga etc.
 
-BYGGNADSINFORMATION:
-- Byggnadsår
-- Antal lägenheter
-- Adress
+HELHETSBEDÖMNING:
+Ge en samlad bedömning: "utmärkt", "bra", "normal", "ansträngd" eller "kritisk" baserat på:
+- Ekonomisk styrka (låg skuldsättning, bra sparande, god soliditet)
+- Tekniskt skick (välskött underhåll, inga akuta behov)
+- Framtidsutsikter (planerade åtgärder, risk för avgiftshöjningar)
 
-Var noggrann och extrahera bara information som faktiskt finns i dokumentet. Om något saknas, ange "Ej angivet".`;
+Var noggrann och extrahera bara information som faktiskt finns. Om något saknas, hoppa över det.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -122,21 +119,36 @@ Var noggrann och extrahera bara information som faktiskt finns i dokumentet. Om 
                   },
                   technical: {
                     type: "array",
+                    description: "Lista över byggnadstekniska komponenter och deras status",
                     items: {
                       type: "object",
                       properties: {
                         category: { 
                           type: "string", 
-                          enum: ["tak", "fasad", "stammar", "grund", "ventilation", "el", "varme", "hissar", "fonster", "trapphus", "portar", "kulvertar", "ovrigt"]
+                          enum: ["tak", "fasad", "stammar", "grund", "ventilation", "el", "varme", "hissar", "fonster", "trapphus", "portar", "tvattstuga", "garage", "ovrigt"]
                         },
                         name: { type: "string", description: "Beskrivande namn" },
+                        status: {
+                          type: "string",
+                          enum: ["good", "warning", "critical"],
+                          description: "Bedömt skick: good (grön), warning (gul), critical (röd)"
+                        },
                         lastMaintained: { type: "number", description: "År för senaste underhåll/renovering" },
                         plannedYear: { type: "number", description: "Planerat år för nästa åtgärd" },
                         materialType: { type: "string", description: "Materialtyp om relevant" },
-                        notes: { type: "string", description: "Övriga noteringar" }
+                        notes: { type: "string", description: "Övriga noteringar om skick, åtgärder etc." }
                       },
-                      required: ["category", "name"]
+                      required: ["category", "name", "status"]
                     }
+                  },
+                  overallAssessment: {
+                    type: "string",
+                    enum: ["excellent", "good", "normal", "strained", "critical"],
+                    description: "Övergripande bedömning av föreningen: excellent (utmärkt), good (bra), normal, strained (ansträngd), critical (kritisk)"
+                  },
+                  assessmentReason: {
+                    type: "string",
+                    description: "Kort motivering till helhetsbedömningen"
                   },
                   risks: {
                     type: "array",
@@ -153,7 +165,7 @@ Var noggrann och extrahera bara information som faktiskt finns i dokumentet. Om 
                     description: "Kort sammanfattning av föreningens status"
                   }
                 },
-                required: ["association", "financial", "technical", "summary"]
+                required: ["association", "financial", "technical", "overallAssessment", "assessmentReason", "summary"]
               }
             }
           }

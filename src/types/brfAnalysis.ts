@@ -21,55 +21,142 @@ export interface BrfFinancial {
   totalAssets?: number;
 }
 
+export type ComponentStatus = "good" | "warning" | "critical";
+
 export interface BrfTechnicalItem {
   category: string;
   name: string;
+  status: ComponentStatus;
   lastMaintained?: number;
   plannedYear?: number;
   materialType?: string;
   notes?: string;
 }
 
+export type OverallAssessment = "excellent" | "good" | "normal" | "strained" | "critical";
+
 export interface BrfAnalysisResult {
   association: BrfAssociation;
   financial: BrfFinancial;
   technical: BrfTechnicalItem[];
+  overallAssessment: OverallAssessment;
+  assessmentReason: string;
   risks?: string[];
   positives?: string[];
   summary: string;
 }
 
-export type RiskLevel = "low" | "medium" | "high";
-
-export function calculateRiskLevel(category: string, lastMaintained?: number): RiskLevel {
-  if (!lastMaintained) return "medium";
-  
-  const currentYear = new Date().getFullYear();
-  const age = currentYear - lastMaintained;
-  
-  const lifespans: Record<string, { warn: number; critical: number }> = {
-    tak: { warn: 25, critical: 40 },
-    fasad: { warn: 30, critical: 50 },
-    stammar: { warn: 35, critical: 50 },
-    grund: { warn: 30, critical: 45 },
-    ventilation: { warn: 15, critical: 25 },
-    el: { warn: 30, critical: 50 },
-    varme: { warn: 15, critical: 25 },
-    hissar: { warn: 20, critical: 28 },
-    fonster: { warn: 25, critical: 35 },
-    trapphus: { warn: 15, critical: 25 },
-    portar: { warn: 15, critical: 25 },
-    kulvertar: { warn: 30, critical: 45 },
-  };
-
-  const lifespan = lifespans[category] || { warn: 20, critical: 35 };
-  
-  if (age >= lifespan.critical) return "high";
-  if (age >= lifespan.warn) return "medium";
-  return "low";
+// Status colors and labels
+export function getStatusColor(status: ComponentStatus): string {
+  switch (status) {
+    case "good": return "text-risk-low";
+    case "warning": return "text-risk-medium";
+    case "critical": return "text-risk-high";
+  }
 }
 
-export function calculateFinancialRisk(financial: BrfFinancial): RiskLevel {
+export function getStatusBgColor(status: ComponentStatus): string {
+  switch (status) {
+    case "good": return "bg-risk-low-bg";
+    case "warning": return "bg-risk-medium-bg";
+    case "critical": return "bg-risk-high-bg";
+  }
+}
+
+export function getStatusEmoji(status: ComponentStatus): string {
+  switch (status) {
+    case "good": return "🟢";
+    case "warning": return "🟡";
+    case "critical": return "🔴";
+  }
+}
+
+export function getStatusLabel(status: ComponentStatus): string {
+  switch (status) {
+    case "good": return "Bra skick";
+    case "warning": return "Behöver uppmärksamhet";
+    case "critical": return "Akut åtgärd behövs";
+  }
+}
+
+// Overall assessment colors and labels
+export function getAssessmentColor(assessment: OverallAssessment): string {
+  switch (assessment) {
+    case "excellent": return "text-risk-low";
+    case "good": return "text-risk-low";
+    case "normal": return "text-risk-medium";
+    case "strained": return "text-risk-medium";
+    case "critical": return "text-risk-high";
+  }
+}
+
+export function getAssessmentBgColor(assessment: OverallAssessment): string {
+  switch (assessment) {
+    case "excellent": return "bg-risk-low-bg";
+    case "good": return "bg-risk-low-bg";
+    case "normal": return "bg-risk-medium-bg";
+    case "strained": return "bg-risk-medium-bg";
+    case "critical": return "bg-risk-high-bg";
+  }
+}
+
+export function getAssessmentEmoji(assessment: OverallAssessment): string {
+  switch (assessment) {
+    case "excellent": return "🌟";
+    case "good": return "🟢";
+    case "normal": return "🟡";
+    case "strained": return "🟠";
+    case "critical": return "🔴";
+  }
+}
+
+export function getAssessmentLabel(assessment: OverallAssessment): string {
+  switch (assessment) {
+    case "excellent": return "Utmärkt förening";
+    case "good": return "Bra förening";
+    case "normal": return "Normal förening";
+    case "strained": return "Ansträngd förening";
+    case "critical": return "Kritiskt läge";
+  }
+}
+
+// Category names and icons
+export const categoryNames: Record<string, string> = {
+  tak: "Tak",
+  fasad: "Fasad",
+  stammar: "Stammar & rör",
+  grund: "Grund & dränering",
+  ventilation: "Ventilation",
+  el: "El-system",
+  varme: "Värmesystem",
+  hissar: "Hissar",
+  fonster: "Fönster",
+  trapphus: "Trapphus",
+  portar: "Portar & lås",
+  tvattstuga: "Tvättstuga",
+  garage: "Garage & parkering",
+  ovrigt: "Övrigt"
+};
+
+export const categoryIcons: Record<string, string> = {
+  tak: "🏠",
+  fasad: "🧱",
+  stammar: "🚿",
+  grund: "🏗️",
+  ventilation: "💨",
+  el: "⚡",
+  varme: "🔥",
+  hissar: "🛗",
+  fonster: "🪟",
+  trapphus: "🪜",
+  portar: "🚪",
+  tvattstuga: "🧺",
+  garage: "🚗",
+  ovrigt: "📋"
+};
+
+// Financial risk assessment
+export function getFinancialStatus(financial: BrfFinancial): ComponentStatus {
   let riskScore = 0;
   
   if (financial.loanPerSqm && financial.loanPerSqm > 7000) riskScore += 2;
@@ -81,57 +168,7 @@ export function calculateFinancialRisk(financial: BrfFinancial): RiskLevel {
   if (financial.solidarity && financial.solidarity < 20) riskScore += 2;
   else if (financial.solidarity && financial.solidarity < 30) riskScore += 1;
   
-  if (riskScore >= 4) return "high";
-  if (riskScore >= 2) return "medium";
-  return "low";
-}
-
-export function calculateScores(analysis: BrfAnalysisResult): {
-  technical: number;
-  financial: number;
-  feeRisk: number;
-  total: number;
-} {
-  // Technical score
-  let techScore = 70;
-  analysis.technical.forEach(item => {
-    const risk = calculateRiskLevel(item.category, item.lastMaintained);
-    if (risk === "high") techScore -= 8;
-    else if (risk === "medium") techScore -= 3;
-  });
-  techScore = Math.max(0, Math.min(100, techScore));
-
-  // Financial score
-  let finScore = 70;
-  const fin = analysis.financial;
-  if (fin.loanPerSqm) {
-    if (fin.loanPerSqm > 7000) finScore -= 20;
-    else if (fin.loanPerSqm > 5000) finScore -= 10;
-    else if (fin.loanPerSqm < 3000) finScore += 10;
-  }
-  if (fin.savingsPerSqmYear) {
-    if (fin.savingsPerSqmYear < 100) finScore -= 15;
-    else if (fin.savingsPerSqmYear < 150) finScore -= 8;
-    else if (fin.savingsPerSqmYear > 200) finScore += 10;
-  }
-  if (fin.solidarity) {
-    if (fin.solidarity < 20) finScore -= 15;
-    else if (fin.solidarity < 30) finScore -= 8;
-    else if (fin.solidarity > 40) finScore += 10;
-  }
-  finScore = Math.max(0, Math.min(100, finScore));
-
-  // Fee risk score (inverted - lower is higher risk)
-  let feeRisk = 60;
-  if (fin.loanPerSqm && fin.loanPerSqm > 5000) feeRisk -= 15;
-  if (fin.savingsPerSqmYear && fin.savingsPerSqmYear < 150) feeRisk -= 10;
-  const highRiskTech = analysis.technical.filter(t => 
-    calculateRiskLevel(t.category, t.lastMaintained) === "high"
-  ).length;
-  feeRisk -= highRiskTech * 5;
-  feeRisk = Math.max(0, Math.min(100, feeRisk));
-
-  const total = Math.round((techScore + finScore + feeRisk) / 3);
-
-  return { technical: techScore, financial: finScore, feeRisk, total };
+  if (riskScore >= 4) return "critical";
+  if (riskScore >= 2) return "warning";
+  return "good";
 }
