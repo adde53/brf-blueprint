@@ -1,5 +1,19 @@
-import { BrfAnalysisResult, calculateRiskLevel, calculateFinancialRisk, calculateScores, RiskLevel } from "@/types/brfAnalysis";
-import { Building2, ArrowLeft, AlertTriangle, CheckCircle, Info } from "lucide-react";
+import { 
+  BrfAnalysisResult, 
+  getStatusColor, 
+  getStatusBgColor, 
+  getStatusEmoji, 
+  getStatusLabel,
+  getAssessmentColor,
+  getAssessmentBgColor,
+  getAssessmentEmoji,
+  getAssessmentLabel,
+  getFinancialStatus,
+  categoryNames,
+  categoryIcons,
+  ComponentStatus
+} from "@/types/brfAnalysis";
+import { Building2, ArrowLeft, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AnalysisResultsProps {
@@ -7,94 +21,24 @@ interface AnalysisResultsProps {
   onBack: () => void;
 }
 
-function getRiskColor(risk: RiskLevel): string {
-  switch (risk) {
-    case "low": return "text-risk-low";
-    case "medium": return "text-risk-medium";
-    case "high": return "text-risk-high";
-  }
-}
-
-function getRiskBgColor(risk: RiskLevel): string {
-  switch (risk) {
-    case "low": return "bg-risk-low-bg";
-    case "medium": return "bg-risk-medium-bg";
-    case "high": return "bg-risk-high-bg";
-  }
-}
-
-function getRiskEmoji(risk: RiskLevel): string {
-  switch (risk) {
-    case "low": return "🟢";
-    case "medium": return "🟡";
-    case "high": return "🔴";
-  }
-}
-
-function getRiskLabel(risk: RiskLevel): string {
-  switch (risk) {
-    case "low": return "Låg risk";
-    case "medium": return "Medel risk";
-    case "high": return "Hög risk";
-  }
-}
-
-function getScoreLabel(score: number): string {
-  if (score >= 75) return "Utmärkt";
-  if (score >= 60) return "Bra";
-  if (score >= 45) return "Godkänt";
-  if (score >= 30) return "Ansträngt";
-  return "Kritiskt";
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 75) return "text-risk-low";
-  if (score >= 60) return "text-risk-low";
-  if (score >= 45) return "text-risk-medium";
-  if (score >= 30) return "text-risk-medium";
-  return "text-risk-high";
-}
-
 function formatNumber(num?: number): string {
-  if (num === undefined || num === null) return "Ej angivet";
+  if (num === undefined || num === null) return "–";
   return num.toLocaleString("sv-SE");
 }
 
-const categoryNames: Record<string, string> = {
-  tak: "Tak",
-  fasad: "Fasad",
-  stammar: "Stammar (V/A)",
-  grund: "Grund & dränering",
-  ventilation: "Ventilation",
-  el: "El-system",
-  varme: "Värmesystem",
-  hissar: "Hissar",
-  fonster: "Fönster",
-  trapphus: "Trapphus",
-  portar: "Portar & lås",
-  kulvertar: "Kulvertar",
-  ovrigt: "Övrigt"
-};
-
-const categoryIcons: Record<string, string> = {
-  tak: "🏠",
-  fasad: "🧱",
-  stammar: "🚿",
-  grund: "🏗️",
-  ventilation: "💨",
-  el: "⚡",
-  varme: "🔥",
-  hissar: "🛗",
-  fonster: "🪟",
-  trapphus: "🪜",
-  portar: "🚪",
-  kulvertar: "🔧",
-  ovrigt: "📋"
-};
+function getFinancialIcon(isGood: boolean | null) {
+  if (isGood === null) return <Minus className="h-4 w-4 text-muted-foreground" />;
+  return isGood 
+    ? <TrendingUp className="h-4 w-4 text-risk-low" />
+    : <TrendingDown className="h-4 w-4 text-risk-high" />;
+}
 
 export function AnalysisResults({ analysis, onBack }: AnalysisResultsProps) {
-  const scores = calculateScores(analysis);
-  const financialRisk = calculateFinancialRisk(analysis.financial);
+  const financialStatus = getFinancialStatus(analysis.financial);
+  const currentYear = new Date().getFullYear();
+  const buildingAge = analysis.association.buildYear 
+    ? currentYear - analysis.association.buildYear 
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,7 +49,7 @@ export function AnalysisResults({ analysis, onBack }: AnalysisResultsProps) {
           Ny analys
         </Button>
 
-        {/* Hero */}
+        {/* Hero with overall assessment */}
         <section className="relative overflow-hidden rounded-3xl bg-gradient-hero p-8 md:p-12 text-primary-foreground">
           <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/5" />
           <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-white/5" />
@@ -120,157 +64,125 @@ export function AnalysisResults({ analysis, onBack }: AnalysisResultsProps) {
               {analysis.association.name}
             </h1>
             {analysis.association.address && (
-              <p className="text-primary-foreground/70 mb-2">{analysis.association.address}</p>
+              <p className="text-primary-foreground/70 mb-4">{analysis.association.address}</p>
             )}
-            <p className="text-primary-foreground/70 mb-6 max-w-lg">
-              {analysis.summary}
-            </p>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 text-center">
-                <p className="text-4xl font-bold">{scores.total}</p>
-                <p className="text-xs mt-1 opacity-70">Totalpoäng</p>
-                <p className="text-sm font-medium mt-1">{getScoreLabel(scores.total)}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 text-center">
-                <p className="text-4xl font-bold">{scores.technical}</p>
-                <p className="text-xs mt-1 opacity-70">Tekniskt</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 text-center">
-                <p className="text-4xl font-bold">{scores.financial}</p>
-                <p className="text-xs mt-1 opacity-70">Ekonomi</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 text-center">
-                <p className="text-4xl font-bold">{scores.feeRisk}</p>
-                <p className="text-xs mt-1 opacity-70">Avgiftsrisk</p>
+            {/* Overall assessment badge */}
+            <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-2xl ${getAssessmentBgColor(analysis.overallAssessment)}`}>
+              <span className="text-3xl">{getAssessmentEmoji(analysis.overallAssessment)}</span>
+              <div>
+                <p className={`text-lg font-bold ${getAssessmentColor(analysis.overallAssessment)}`}>
+                  {getAssessmentLabel(analysis.overallAssessment)}
+                </p>
+                <p className="text-sm text-foreground/70">{analysis.assessmentReason}</p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Building info */}
-        {(analysis.association.buildYear || analysis.association.apartments || analysis.association.fiscalYear) && (
-          <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {analysis.association.buildYear && (
-              <div className="bg-card rounded-xl p-4 border">
-                <p className="text-sm text-muted-foreground">Byggnadsår</p>
-                <p className="text-2xl font-bold">{analysis.association.buildYear}</p>
-              </div>
-            )}
-            {analysis.association.apartments && (
-              <div className="bg-card rounded-xl p-4 border">
-                <p className="text-sm text-muted-foreground">Lägenheter</p>
-                <p className="text-2xl font-bold">{analysis.association.apartments}</p>
-              </div>
-            )}
-            {analysis.association.totalArea && (
-              <div className="bg-card rounded-xl p-4 border">
-                <p className="text-sm text-muted-foreground">Total yta</p>
-                <p className="text-2xl font-bold">{formatNumber(analysis.association.totalArea)} kvm</p>
-              </div>
-            )}
-            {analysis.association.fiscalYear && (
-              <div className="bg-card rounded-xl p-4 border">
-                <p className="text-sm text-muted-foreground">Räkenskapsår</p>
-                <p className="text-2xl font-bold">{analysis.association.fiscalYear}</p>
-              </div>
-            )}
-          </section>
-        )}
+        {/* Building info cards */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {analysis.association.buildYear && (
+            <div className="bg-card rounded-xl p-4 border">
+              <p className="text-sm text-muted-foreground">Byggnadsår</p>
+              <p className="text-2xl font-bold">{analysis.association.buildYear}</p>
+              {buildingAge && (
+                <p className="text-xs text-muted-foreground">{buildingAge} år gammal</p>
+              )}
+            </div>
+          )}
+          {analysis.association.apartments && (
+            <div className="bg-card rounded-xl p-4 border">
+              <p className="text-sm text-muted-foreground">Lägenheter</p>
+              <p className="text-2xl font-bold">{analysis.association.apartments}</p>
+            </div>
+          )}
+          {analysis.association.totalArea && (
+            <div className="bg-card rounded-xl p-4 border">
+              <p className="text-sm text-muted-foreground">Total yta</p>
+              <p className="text-2xl font-bold">{formatNumber(analysis.association.totalArea)} m²</p>
+            </div>
+          )}
+          {analysis.association.fiscalYear && (
+            <div className="bg-card rounded-xl p-4 border">
+              <p className="text-sm text-muted-foreground">Räkenskapsår</p>
+              <p className="text-2xl font-bold">{analysis.association.fiscalYear}</p>
+            </div>
+          )}
+        </section>
 
-        {/* Financial */}
+        {/* Summary */}
+        <section className="bg-card rounded-2xl p-6 border">
+          <p className="text-foreground leading-relaxed">{analysis.summary}</p>
+        </section>
+
+        {/* Financial overview */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl text-foreground">Ekonomi</h2>
-            <span className={`text-sm font-medium px-4 py-1.5 rounded-full ${getRiskBgColor(financialRisk)} ${getRiskColor(financialRisk)}`}>
-              {getRiskEmoji(financialRisk)} {getRiskLabel(financialRisk)}
+            <span className={`text-sm font-medium px-4 py-1.5 rounded-full ${getStatusBgColor(financialStatus)} ${getStatusColor(financialStatus)}`}>
+              {getStatusEmoji(financialStatus)} {getStatusLabel(financialStatus)}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <FinancialMetric
-              label="Lån per kvm"
-              value={analysis.financial.loanPerSqm ? `${formatNumber(analysis.financial.loanPerSqm)} kr` : undefined}
-              benchmark="< 5 000 kr/kvm"
-              isGood={!analysis.financial.loanPerSqm || analysis.financial.loanPerSqm < 5000}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <FinancialCard
+              label="Lån per m²"
+              value={analysis.financial.loanPerSqm}
+              unit="kr"
+              benchmark="Under 5 000 kr = bra"
+              isGood={analysis.financial.loanPerSqm ? analysis.financial.loanPerSqm < 5000 : null}
             />
-            <FinancialMetric
-              label="Avgift per kvm/år"
-              value={analysis.financial.feePerSqmYear ? `${formatNumber(analysis.financial.feePerSqmYear)} kr` : undefined}
-              benchmark="600–800 kr/kvm/år"
-              isGood={!analysis.financial.feePerSqmYear || (analysis.financial.feePerSqmYear >= 500 && analysis.financial.feePerSqmYear <= 900)}
+            <FinancialCard
+              label="Avgift per m²/år"
+              value={analysis.financial.feePerSqmYear}
+              unit="kr"
+              benchmark="600–800 kr = normalt"
+              isGood={analysis.financial.feePerSqmYear ? (analysis.financial.feePerSqmYear >= 500 && analysis.financial.feePerSqmYear <= 900) : null}
             />
-            <FinancialMetric
-              label="Sparande underhåll"
-              value={analysis.financial.savingsPerSqmYear ? `${formatNumber(analysis.financial.savingsPerSqmYear)} kr/kvm/år` : undefined}
-              benchmark="150–300 kr/kvm/år"
-              isGood={!analysis.financial.savingsPerSqmYear || analysis.financial.savingsPerSqmYear >= 150}
+            <FinancialCard
+              label="Sparande per m²/år"
+              value={analysis.financial.savingsPerSqmYear}
+              unit="kr"
+              benchmark="Över 150 kr = bra"
+              isGood={analysis.financial.savingsPerSqmYear ? analysis.financial.savingsPerSqmYear >= 150 : null}
             />
-            <FinancialMetric
+            <FinancialCard
               label="Soliditet"
-              value={analysis.financial.solidarity ? `${analysis.financial.solidarity}%` : undefined}
-              benchmark="> 30%"
-              isGood={!analysis.financial.solidarity || analysis.financial.solidarity > 30}
+              value={analysis.financial.solidarity}
+              unit="%"
+              benchmark="Över 30% = bra"
+              isGood={analysis.financial.solidarity ? analysis.financial.solidarity > 30 : null}
             />
-            <FinancialMetric
+            <FinancialCard
               label="Totala lån"
-              value={analysis.financial.totalLoans ? `${formatNumber(analysis.financial.totalLoans)} kr` : undefined}
-              benchmark="Varierar"
-              isGood={true}
+              value={analysis.financial.totalLoans}
+              unit="kr"
+              benchmark=""
+              isGood={null}
             />
-            <FinancialMetric
-              label="Resultat"
-              value={analysis.financial.result ? `${formatNumber(analysis.financial.result)} kr` : undefined}
-              benchmark="Positivt"
-              isGood={!analysis.financial.result || analysis.financial.result >= 0}
+            <FinancialCard
+              label="Årsresultat"
+              value={analysis.financial.result}
+              unit="kr"
+              benchmark="Positivt = bra"
+              isGood={analysis.financial.result ? analysis.financial.result >= 0 : null}
             />
           </div>
         </section>
 
-        {/* Technical */}
+        {/* Technical components */}
         {analysis.technical.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-2xl text-foreground">Tekniskt skick</h2>
-            <div className="space-y-2">
-              {analysis.technical.map((item, i) => {
-                const risk = calculateRiskLevel(item.category, item.lastMaintained);
-                const currentYear = new Date().getFullYear();
-                const age = item.lastMaintained ? currentYear - item.lastMaintained : null;
-
-                return (
-                  <div
-                    key={i}
-                    className={`rounded-xl p-4 ${getRiskBgColor(risk)} border border-transparent`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{categoryIcons[item.category] || "📋"}</span>
-                        <div>
-                          <h3 className="font-semibold text-foreground">
-                            {categoryNames[item.category] || item.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            {item.lastMaintained ? `Senast: ${item.lastMaintained}` : "År ej angivet"}
-                            {age ? ` · ${age} år gammal` : ""}
-                            {item.materialType ? ` · ${item.materialType}` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`text-sm font-medium px-3 py-1 rounded-full ${getRiskBgColor(risk)} ${getRiskColor(risk)}`}>
-                        {getRiskEmoji(risk)} {getRiskLabel(risk)}
-                      </span>
-                    </div>
-                    {item.notes && (
-                      <p className="text-sm text-muted-foreground mt-2 ml-11">{item.notes}</p>
-                    )}
-                    {item.plannedYear && (
-                      <p className="text-sm text-primary mt-1 ml-11">
-                        📅 Planerad åtgärd: {item.plannedYear}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+            <p className="text-muted-foreground text-sm">
+              Bedömning baserat på byggnadsår ({analysis.association.buildYear || "okänt"}) och underhållshistorik
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {analysis.technical.map((item, i) => (
+                <TechnicalCard key={i} item={item} />
+              ))}
             </div>
           </section>
         )}
@@ -278,7 +190,7 @@ export function AnalysisResults({ analysis, onBack }: AnalysisResultsProps) {
         {/* Risks and positives */}
         {((analysis.risks && analysis.risks.length > 0) || (analysis.positives && analysis.positives.length > 0)) && (
           <section className="space-y-4">
-            <h2 className="text-2xl text-foreground">Sammanfattning</h2>
+            <h2 className="text-2xl text-foreground">Observationer</h2>
             <div className="space-y-2">
               {analysis.risks?.map((risk, i) => (
                 <div key={`risk-${i}`} className="flex items-start gap-3 bg-risk-high-bg rounded-xl p-4">
@@ -298,26 +210,83 @@ export function AnalysisResults({ analysis, onBack }: AnalysisResultsProps) {
 
         {/* Footer */}
         <footer className="text-center text-xs text-muted-foreground pb-8 pt-4 border-t">
-          <p>BRF Analysen – baserat på uppladdade årsredovisningar med AI-analys.</p>
+          <p>BRF Analysen – AI-analys av årsredovisningar. Alltid dubbelkolla mot originaldokumentet.</p>
         </footer>
       </div>
     </div>
   );
 }
 
-function FinancialMetric({ label, value, benchmark, isGood }: {
+function FinancialCard({ label, value, unit, benchmark, isGood }: {
   label: string;
-  value?: string;
+  value?: number;
+  unit: string;
   benchmark: string;
-  isGood: boolean;
+  isGood: boolean | null;
 }) {
+  const status: ComponentStatus = isGood === null ? "warning" : (isGood ? "good" : "critical");
+  const hasValue = value !== undefined && value !== null;
+  
   return (
-    <div className={`rounded-xl p-4 border ${value ? (isGood ? "bg-risk-low-bg border-transparent" : "bg-risk-high-bg border-transparent") : "bg-secondary border-transparent"}`}>
-      <p className="text-sm text-muted-foreground mb-1">{label}</p>
-      <p className={`text-xl font-bold font-sans ${value ? (isGood ? "text-risk-low" : "text-risk-high") : "text-muted-foreground"}`}>
-        {value || "Ej angivet"}
+    <div className={`rounded-xl p-4 border ${hasValue ? getStatusBgColor(status) : "bg-secondary"} border-transparent`}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        {hasValue && getFinancialIcon(isGood)}
+      </div>
+      <p className={`text-xl font-bold font-sans ${hasValue ? (isGood ? "text-risk-low" : isGood === false ? "text-risk-high" : "text-foreground") : "text-muted-foreground"}`}>
+        {hasValue ? `${formatNumber(value)} ${unit}` : "Ej angivet"}
       </p>
-      <p className="text-xs text-muted-foreground mt-1">Bra: {benchmark}</p>
+      {benchmark && (
+        <p className="text-xs text-muted-foreground mt-1">{benchmark}</p>
+      )}
+    </div>
+  );
+}
+
+function TechnicalCard({ item }: { item: BrfAnalysisResult["technical"][0] }) {
+  const currentYear = new Date().getFullYear();
+  const age = item.lastMaintained ? currentYear - item.lastMaintained : null;
+  
+  return (
+    <div className={`rounded-xl p-4 ${getStatusBgColor(item.status)} border border-transparent`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">{categoryIcons[item.category] || "📋"}</span>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-foreground">
+              {categoryNames[item.category] || item.name}
+            </h3>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {item.lastMaintained && (
+                <span className="text-xs bg-background/50 px-2 py-0.5 rounded-full">
+                  Senast: {item.lastMaintained}
+                </span>
+              )}
+              {age !== null && (
+                <span className="text-xs bg-background/50 px-2 py-0.5 rounded-full">
+                  {age} år sedan
+                </span>
+              )}
+              {item.materialType && (
+                <span className="text-xs bg-background/50 px-2 py-0.5 rounded-full">
+                  {item.materialType}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <span className={`text-sm font-medium px-3 py-1 rounded-full whitespace-nowrap ${getStatusBgColor(item.status)} ${getStatusColor(item.status)}`}>
+          {getStatusEmoji(item.status)}
+        </span>
+      </div>
+      {item.notes && (
+        <p className="text-sm text-muted-foreground mt-3 ml-11">{item.notes}</p>
+      )}
+      {item.plannedYear && (
+        <p className="text-sm text-primary mt-1 ml-11">
+          📅 Planerad åtgärd: {item.plannedYear}
+        </p>
+      )}
     </div>
   );
 }
