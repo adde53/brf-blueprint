@@ -11,9 +11,12 @@ import {
   getFinancialStatus,
   categoryNames,
   categoryIcons,
-  ComponentStatus
+  feeItemLabels,
+  feeItemIcons,
+  ComponentStatus,
+  FeeIncludesItem
 } from "@/types/brfAnalysis";
-import { Building2, ArrowLeft, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Building2, ArrowLeft, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Minus, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AnalysisResultsProps {
@@ -171,6 +174,49 @@ export function AnalysisResults({ analysis, onBack }: AnalysisResultsProps) {
           </div>
         </section>
 
+        {/* What's included in the fee */}
+        {analysis.feeIncludes && analysis.feeIncludes.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Receipt className="h-6 w-6 text-primary" />
+              <div>
+                <h2 className="text-2xl text-foreground">Vad ingår i avgiften?</h2>
+                <p className="text-sm text-muted-foreground">Och vad du annars hade betalat separat</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {analysis.feeIncludes.map((item, i) => (
+                <FeeIncludesCard key={i} item={item} />
+              ))}
+            </div>
+
+            {/* Total estimated value */}
+            {analysis.feeIncludes.some(item => item.estimatedMonthlyCost) && (
+              <div className="bg-risk-low-bg rounded-xl p-4 border border-transparent">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-foreground">Uppskattat värde av inkluderade tjänster</p>
+                    <p className="text-sm text-muted-foreground">Om du hade betalat allt separat</p>
+                  </div>
+                  <p className="text-2xl font-bold text-risk-low">
+                    ~{formatNumber(
+                      analysis.feeIncludes.reduce((sum, item) => sum + (item.estimatedMonthlyCost || 0), 0)
+                    )} kr/mån
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Fee analysis */}
+            {analysis.feeAnalysis && (
+              <div className="bg-card rounded-xl p-4 border">
+                <p className="text-sm text-foreground leading-relaxed">{analysis.feeAnalysis}</p>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Technical components */}
         {analysis.technical.length > 0 && (
           <section className="space-y-4">
@@ -287,6 +333,32 @@ function TechnicalCard({ item }: { item: BrfAnalysisResult["technical"][0] }) {
           📅 Planerad åtgärd: {item.plannedYear}
         </p>
       )}
+    </div>
+  );
+}
+
+function FeeIncludesCard({ item }: { item: FeeIncludesItem }) {
+  return (
+    <div className="bg-card rounded-xl p-4 border flex items-start gap-3">
+      <span className="text-2xl">{feeItemIcons[item.item] || "📋"}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-foreground">
+            {feeItemLabels[item.item] || item.name}
+          </h3>
+          {item.estimatedMonthlyCost && (
+            <span className="text-sm font-medium text-risk-low">
+              ~{formatNumber(item.estimatedMonthlyCost)} kr/mån
+            </span>
+          )}
+        </div>
+        {item.notes && (
+          <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
+        )}
+        {!item.notes && item.name !== feeItemLabels[item.item] && (
+          <p className="text-sm text-muted-foreground mt-1">{item.name}</p>
+        )}
+      </div>
     </div>
   );
 }
